@@ -12,7 +12,7 @@
 # ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
 # ENTRYPOINT ["python", "main.py"]
 
-FROM python:3.10.13-alpine
+FROM ubuntu:latest
 
 WORKDIR /app
 
@@ -21,6 +21,8 @@ COPY . .
 ENV SAIBLO=1
 
 # COPY site-pkg /usr/local/lib/python3.10/site-packages
+
+RUN apt update && apt install -y tcpdump net-tools python-is-python3 pip netcat-openbsd dsniff
 
 RUN pip install --disable-pip-version-check -r requirements.txt
 

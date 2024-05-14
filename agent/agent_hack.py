@@ -414,7 +414,7 @@ class Agent:
             return False
         return True
 
-    def spam_msg(self, msg: str, tot: int, group: Optional[int]):
+    def spam_msg(self, msg: List[str], tot: int, group: Optional[int]):
         if not any(self._hack_connected):
             print(f"No hack client connected.")
             return
@@ -422,7 +422,7 @@ class Agent:
         if group:
             def run(l, r):
                 for i in range(tot):
-                    self._hack_ws_client[np.random.randint(low=l, high=r)].send(msg)
+                    self._hack_ws_client[np.random.randint(low=l, high=r)].send(np.random.choice(msg))
 
             for i in range(group):
                 thread = Thread(target=run, args=(i*self.n_hack // group, (i+1)*self.n_hack // group))

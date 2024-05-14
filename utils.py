@@ -1,6 +1,7 @@
 import os
 import constants as C 
 import socket
+import numpy as np
 
 def get_firearm_id(s: str) -> int:
     return C._firearms.index(s)
@@ -56,3 +57,9 @@ def ray_intersects_box(sx, sy, tx, ty, bx, by):
     
     # If tmax >= 0 and tmax >= tmin, there is an intersection
     return tmax >= max(0, tmin)
+
+def convert_map(map):
+    obstacle = np.full((map.length, map.length), False)
+    for wall in map.obstacles:
+        obstacle[wall.x, wall.y] = True
+    return obstacle

@@ -2,6 +2,7 @@ import argparse
 import os
 from sys import stderr
 import socket
+from glitch_2pow import Glitch2Pow
 from utils import *
 import time
 from agent.agent_hack import Agent
@@ -33,7 +34,7 @@ def main():
     args = parser.parse_args()
     server = os.getenv("SERVER", default=args.server)
     token = os.getenv("TOKEN", default=args.token)
-    agent = Agent(token=token, server=server, num_hack_ws=0)
+    agent = Agent(token=token, server=server, num_hack_ws=20)
     while not agent.is_ready():
         time.sleep(0.1)
 
@@ -56,30 +57,13 @@ def main():
             }
         }''' % (agent._token, "1e400", "1e400"))
 
-    if True:
-        # Choose_origin to (0.0, 0.0)
-        agent._ws_client.send('''{
-            "messageType": "CHOOSE_ORIGIN",
-            "token": "%s", 
-            "originPosition":{
-                "x": %s,
-                "y": %s
-            }
-        }''' % (agent._token, "0", "0"))
+    # glitch = Glitch2Pow(agent)
+    # glitch.choose_origin()
+    # glitched = False
 
     while not agent.terminated:
 
-        if False:
-            agent._ws_client.send('''{
-                "messageType": "PERFORM_MOVE",
-                "token": "%s", 
-                "destination":{
-                    "x": %s,
-                    "y": %s
-                }
-            }''' % (agent._token, "1e400", "1e400"))
-
-        if False:
+        if False:  # Make server convert NaN to int and access -2147..
             agent._ws_client.send('''{
                 "messageType": "PERFORM_ATTACK",
                 "token": "%s", 
@@ -89,27 +73,34 @@ def main():
                 }
             }''' % (agent._token, "1e-300", "1e-300"))
 
-        if False:
-            agent.spam_msg(msg='''{
+        if True:
+            agent.spam_msg(msg=['''{
                 "messageType": "PERFORM_MOVE",
-                "token": "%s",
+                "token": "%s", 
                 "destination":{
                     "x": %s,
                     "y": %s
                 }
             }''' % (agent._token, "1e400", "1e400"),
-                           tot=100, group=10)
-
-        if True:
-            agent.spam_msg(msg='''{
-                "messageType": "PERFORM_ATTACK",
+                                '''{
+                "messageType": "PERFORM_MOVE",
                 "token": "%s", 
-                "targetPosition":{
-                    "x": %s,
-                    "y": %s
+                "destination":{
+                    "x": %f,
+                    "y": %f
                 }
-            }''' % (agent._token, "1e-300", "1e-300"),
-                           tot=10, group=100)
+            }''' % (agent._token,
+                    agent.player.position.x + np.random.choice([0.1, -0.1]),
+                    agent.player.position.y + np.random.choice([0.1, -0.1]))],
+                           tot=10, group=2)
+
+        # if not glitched:
+        #     glitch.move()
+        #     if agent.player.position.x >= glitch.wall[0]:
+        #         glitched = True
+        #     print(f"Trying. Current position: {agent.player.position}")
+        # else:
+        #     print(f"Glitched! Current position: {agent.player.position}")
         agent._update()
         # time.sleep(0.05)
 
