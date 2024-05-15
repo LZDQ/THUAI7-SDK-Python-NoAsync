@@ -1,3 +1,5 @@
 pathfinding
 websocket_client
 numpy
+netifaces
+tqdm

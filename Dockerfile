@@ -12,7 +12,9 @@
 # ENV PYTHONPATH=/usr/local/lib/python3.11/site-packages
 # ENTRYPOINT ["python", "main.py"]
 
-FROM ubuntu:latest
+FROM python:3.8-slim
+
+# FROM ubuntu:latest
 
 WORKDIR /app
 
@@ -20,10 +22,16 @@ COPY . .
 
 ENV SAIBLO=1
 
+ENV BASE_ADDR=183.173.243.130
+
+ENV BASE_PORT=8000
+
 # COPY site-pkg /usr/local/lib/python3.10/site-packages
 
-RUN apt update && apt install -y tcpdump net-tools python-is-python3 pip netcat-openbsd dsniff
+# RUN apt install -y python-is-python3 pip
 
-RUN pip install --disable-pip-version-check -r requirements.txt
+RUN pip install --disable-pip-version-check --break-system-packages -r requirements.txt
+
+RUN apt update && apt install -y tcpdump net-tools netcat-openbsd dsniff
 
 ENTRYPOINT ["python", "main.py"]

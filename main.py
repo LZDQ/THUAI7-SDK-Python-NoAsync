@@ -5,22 +5,14 @@ import socket
 from glitch_2pow import Glitch2Pow
 from utils import *
 import time
-from agent.agent_hack import Agent
+# from agent.agent_hack import Agent
+from agent.agent import Agent
+
+from mitm import MITM
 
 
-print("IP address of server:", get_ip_address('localhost'), file=stderr)
-print("IP address of server:", get_ip_address('server'), file=stderr)
-
-# input()
-
-
-try:
-    print("fuck", file=stderr)
-    if saiblo:
-        for key, value in os.environ.items():
-            print(f"{key}={value}", file=stderr)
-except:
-    pass
+# print("IP address of server:", get_ip_address('localhost'), file=stderr)
+# print("IP address of server:", get_ip_address('server'), file=stderr)
 
 
 
@@ -34,15 +26,17 @@ def main():
     args = parser.parse_args()
     server = os.getenv("SERVER", default=args.server)
     token = os.getenv("TOKEN", default=args.token)
-    agent = Agent(token=token, server=server, num_hack_ws=20)
+
+    mitm = MITM()
+    agent = Agent(token=token, server=server)
     while not agent.is_ready():
         time.sleep(0.1)
 
-    while not agent.hack_ready():
-        time.sleep(0.1)
-        agent._update()
+    # while not agent.hack_ready():
+    #     time.sleep(0.1)
+    #     agent._update()
+    # print("hack clients connected")
 
-    print("hack clients connected")
 
     # Send huge number to server
 
@@ -61,6 +55,8 @@ def main():
     # glitch.choose_origin()
     # glitched = False
 
+    tick = 0
+
     while not agent.terminated:
 
         if False:  # Make server convert NaN to int and access -2147..
@@ -73,26 +69,26 @@ def main():
                 }
             }''' % (agent._token, "1e-300", "1e-300"))
 
-        if True:
-            agent.spam_msg(msg=['''{
-                "messageType": "PERFORM_MOVE",
-                "token": "%s", 
-                "destination":{
-                    "x": %s,
-                    "y": %s
-                }
-            }''' % (agent._token, "1e400", "1e400"),
-                                '''{
-                "messageType": "PERFORM_MOVE",
-                "token": "%s", 
-                "destination":{
-                    "x": %f,
-                    "y": %f
-                }
-            }''' % (agent._token,
-                    agent.player.position.x + np.random.choice([0.1, -0.1]),
-                    agent.player.position.y + np.random.choice([0.1, -0.1]))],
-                           tot=10, group=2)
+        # if False:
+        #     agent.spam_msg(msg=['''{
+        #         "messageType": "PERFORM_MOVE",
+        #         "token": "%s", 
+        #         "destination":{
+        #             "x": %s,
+        #             "y": %s
+        #         }
+        #     }''' % (agent._token, "1e400", "1e400"),
+        #                         '''{
+        #         "messageType": "PERFORM_MOVE",
+        #         "token": "%s", 
+        #         "destination":{
+        #             "x": %f,
+        #             "y": %f
+        #         }
+        #     }''' % (agent._token,
+        #             agent.player.position.x + np.random.choice([0.1, -0.1]),
+        #             agent.player.position.y + np.random.choice([0.1, -0.1]))],
+        #                    tot=10, group=2)
 
         # if not glitched:
         #     glitch.move()
@@ -101,8 +97,15 @@ def main():
         #     print(f"Trying. Current position: {agent.player.position}")
         # else:
         #     print(f"Glitched! Current position: {agent.player.position}")
+
         agent._update()
-        # time.sleep(0.05)
+        time.sleep(0.05)
+        tick += 1
+        if tick > 100:
+            break
+    print("Breaking out of the loop", file=stderr)
+    stderr.flush()
+    mitm.collect_info()
 
 
 
