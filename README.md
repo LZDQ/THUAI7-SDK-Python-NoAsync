@@ -1,3 +1,6 @@
+**这个库现在包含的是 hack，具体细节正在路上。**
+
+
 # THUAI7 Agent Template (Python)
 
 自研 SDK，不使用 async。（因为 AI 库兼容不好）
