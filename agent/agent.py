@@ -7,14 +7,18 @@ from typing import List, Literal, Optional
 
 from websocket import WebSocketApp, WebSocketException
 
+# _t = time.time()
 from . import messages
 from .map import Map
 from .player_info import FirearmKind, Item, ItemKind, PlayerInfo
 from .position import Position
 from .safe_zone import SafeZone
 from .supply import Supply, SupplyKind
+from .grenade_info import GrenadeInfo
 
 from utils import saiblo
+
+# print(f"Import agent time: {time.time() - _t}")
 
 MedicineKind = Literal[
     "BANDAGE",
@@ -52,6 +56,7 @@ class Agent:
                  token: str,
                  server: str,
                  logging_level: int = logging.DEBUG,
+                 is_normal: bool = True,
         ):
         self._token = token
         self._server = server
@@ -64,12 +69,14 @@ class Agent:
         The queue and the ws is used to receive and store info
         """
         self._que = SimpleQueue()
+        self.is_normal = is_normal
 
         def on_open(ws):
             print("on_open")
             self._que.put({
                 "messageType": "open"
             })
+            # if self.is_normal:
             self.upd_info()
 
         def on_message(ws, msg):
@@ -98,7 +105,7 @@ class Agent:
                         return
                 except:
                     pass
-                time.sleep(3)
+                time.sleep(0.01)
                 # print('end fuck')
 
         Thread(target=start_ws).start()
@@ -109,6 +116,7 @@ class Agent:
         self.supplies: Optional[List[Supply]] = None
         self.safe_zone: Optional[SafeZone] = None
         self.ticks: Optional[int] = 0
+        self.grenade_info: Optional[List[GrenadeInfo]] = None
         self.terminated = False
 
         self._logs_time = {
@@ -126,7 +134,12 @@ class Agent:
         return str(self)
 
     def upd_info(self):
-        self._ws_client.send(messages.GetPlayerInfoMessage(token=self._token).json())
+        for _ in range(10):
+            try:
+                self._ws_client.send(messages.GetPlayerInfoMessage(token=self._token).json())
+            except:
+                pass
+            time.sleep(0.1)
 
     def is_ready(self) -> bool:
         self._update()
@@ -152,40 +165,41 @@ class Agent:
                 self.map is not None and \
                 self.supplies is not None and \
                 self.safe_zone is not None and \
-                self.ticks is not None
+                self.ticks is not None and \
+                self.grenade_info is not None
 
     def is_done(self) -> bool:
         return self.terminated
 
     def is_win(self) -> bool:
-        return self.enemy.health <= 0
+        return self.player.health > 0
 
     def check_alive(func):
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except WebSocketException:
+            except:
                 # self.terminated = True
                 pass
         return wrapper
 
     @check_alive
-    def abandon(self, supply: SupplyKind, count: int):
+    def abandon(self, supply: SupplyKind, count: int, token: Optional[str] = None):
         logging.log(self._logging_level, "%s.abandon(%s, %d)", self, supply, count)
         self._ws_client.send(
             messages.PerformAbandonMessage(
-                token=self._token,
+                token=token or self._token,
                 numb=count,
                 target_supply=supply,
             ).json()
         )
 
     @check_alive
-    def pick_up(self, supply: SupplyKind, count: int):
+    def pick_up(self, supply: SupplyKind, count: int, token: Optional[str] = None):
         logging.log(self._logging_level, "%s.pick_up(%s, %d)", self, supply, count)
         self._ws_client.send(
             messages.PerformPickUpMessage(
-                token=self._token, target_supply=supply, num=count
+                token=token or self._token, target_supply=supply, num=count
             ).json()
         )
 
@@ -210,21 +224,21 @@ class Agent:
         )
 
     @check_alive
-    def use_grenade(self, position: Position[float]):
+    def use_grenade(self, position: Position[float], token: Optional[str] = None):
         logging.log(self._logging_level, "%s.use_grenade(%s)", self, position)
         self._ws_client.send(
             messages.PerformUseGrenadeMessage(
-                token=self._token,
+                token=token or self._token,
                 target_position=messages.Position(x=position.x, y=position.y),
             ).json()
         )
 
     @check_alive
-    def move(self, position: Position[float]):
+    def move(self, position: Position[float], token: Optional[str] = None):
         logging.log(self._logging_level, "%s.move(%s)", self, position)
         self._ws_client.send(
             messages.PerformMoveMessage(
-                token=self._token,
+                token=token or self._token,
                 destination=messages.Position(x=position.x, y=position.y),
             ).json()
         )
@@ -239,21 +253,21 @@ class Agent:
         )
 
     @check_alive
-    def attack(self, position: Position[float]):
+    def attack(self, position: Position[float], token: Optional[str] = None):
         logging.log(self._logging_level, "%s.attack(%s)", self, position)
         self._ws_client.send(
             messages.PerformAttackMessage(
-                token=self._token,
+                token=token or self._token,
                 target_position=messages.Position(x=position.x, y=position.y),
             ).json()
         )
 
     @check_alive
-    def choose_origin(self, position: Position[float]):
+    def choose_origin(self, position: Position[float], token: Optional[str] = None):
         logging.log(self._logging_level, "%s.choose_origin(%s)", self, position)
         self._ws_client.send(
             messages.ChooseOriginMessage(
-                token=self._token,
+                token=token or self._token,
                 origin_position=messages.Position(x=position.x, y=position.y),
             ).json()
         )
@@ -288,6 +302,7 @@ class Agent:
                 logging.error(f"{self} got error from server: {msg_dict['message']}")
 
             elif msg_type == 'PLAYERS_INFO':
+                self.ticks = msg_dict["elapsedTicks"]
                 if not saiblo: self._logs_time["playerInfo"].append(time.time())
                 for data in msg_dict["players"]:
                     # print(data.keys())
@@ -355,12 +370,23 @@ class Agent:
             elif msg_type == 'PLAYER_ID':
                 self._self_id = msg_dict["playerId"]
 
-            elif msg_type == "TICKS":
-                self._logs_time["ticks"].append(time.time())
-                self.ticks = msg_dict["elapsedTicks"]
+            elif msg_type == "GRENADES":
+                self.grenade_info = [
+                    GrenadeInfo(
+                        throwTick=grenade["throwTick"],
+                        evaluatedPosition=Position(
+                            x=grenade["evaluatedPosition"]["x"],
+                            y=grenade["evaluatedPosition"]["y"],
+                        ),
+                    )
+                    for grenade in msg_dict["grenades"]
+                ]
 
             else:
                 logging.error(f"Unhandled message type: {msg_type}")
+
+    def close(self):
+        self._ws_client.close()
 
 
 
