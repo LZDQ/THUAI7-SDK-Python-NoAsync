@@ -1,4 +1,4 @@
-**这个库现在包含的是 hack，具体细节正在路上。**
+# **这个库现在包含的是 hack，具体细节在 https://blog.csdn.net/LLLZDQ/article/details/139397336**
 
 
 # THUAI7 Agent Template (Python)
